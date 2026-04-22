@@ -57,16 +57,11 @@ class SyncAbstractEngine(BaseAbstractEngine):
         ...
 
     @abstractmethod
-    def query(self, content: str, *, tx_id: TransactionId | None) -> Any:
-        """Execute a GraphQL query.
+    def query(self, content: Any, *, tx_id: TransactionId | None) -> Any:
+        """Execute a query against the engine.
 
-        This method expects a JSON object matching this structure:
-
-        {
-            'variables': {},
-            'operation_name': str,
-            'query': str,
-        }
+        For the binary engine this expects a JSON string with GraphQL.
+        For the SQLAlchemy engine this accepts a QueryRequest object.
         """
         ...
 
@@ -123,16 +118,11 @@ class AsyncAbstractEngine(BaseAbstractEngine):
         ...
 
     @abstractmethod
-    async def query(self, content: str, *, tx_id: TransactionId | None) -> Any:
-        """Execute a GraphQL query.
+    async def query(self, content: Any, *, tx_id: TransactionId | None) -> Any:
+        """Execute a query against the engine.
 
-        This method expects a JSON object matching this structure:
-
-        {
-            'variables': {},
-            'operation_name': str,
-            'query': str,
-        }
+        For the binary engine this expects a JSON string with GraphQL.
+        For the SQLAlchemy engine this accepts a QueryRequest object.
         """
         ...
 

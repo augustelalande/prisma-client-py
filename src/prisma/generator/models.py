@@ -245,6 +245,7 @@ class EngineType(str, enum.Enum):
     binary = 'binary'
     library = 'library'
     dataproxy = 'dataproxy'
+    sqlalchemy = 'sqlalchemy'
 
     @override
     def __str__(self) -> str:
@@ -623,6 +624,8 @@ class Config(BaseSettings):
     def engine_type_validator(cls, value: EngineType) -> EngineType:
         if value == EngineType.binary:
             return value
+        elif value == EngineType.sqlalchemy:
+            return value
         elif value == EngineType.dataproxy:  # pragma: no cover
             raise ValueError('Prisma Client Python does not support the Prisma Data Proxy yet.')
         elif value == EngineType.library:  # pragma: no cover
@@ -793,6 +796,21 @@ class Model(BaseModel):
             return False
         else:
             return True
+
+    @property
+    def fk_map(self) -> Dict[str, str]:
+        """Maps each scalar FK field name to its FK target, e.g. {'authorId': 'User.id'}."""
+        result: Dict[str, str] = {}
+        for field in self.relational_fields:
+            if not field.relation_from_fields:
+                continue
+            related_model = field.get_relational_model()
+            table_name = (related_model.db_name or related_model.name) if related_model else field.type
+            to_fields = field.relation_to_fields or []
+            for i, from_name in enumerate(field.relation_from_fields):
+                to_name = to_fields[i] if i < len(to_fields) else 'id'
+                result[from_name] = f'{table_name}.{to_name}'
+        return result
 
     @property
     def instance_name(self) -> str:
@@ -1075,6 +1093,39 @@ class Field(BaseModel):
         for model in get_datamodel().models:
             if model.name == name:
                 return model
+        return None
+
+    @property
+    def sqlalchemy_type(self) -> str:
+        """Returns the Python type string to use in a SQLModel table class."""
+        _type_map = {
+            'String': 'str',
+            'Int': 'int',
+            'BigInt': 'int',
+            'Float': 'float',
+            'Boolean': 'bool',
+            'DateTime': 'datetime.datetime',
+            'Decimal': 'decimal.Decimal',
+            'Json': 'Any',
+            'Bytes': 'bytes',
+        }
+        if self.kind == 'enum':
+            return 'str'
+        if self.kind == 'object':
+            return f"'{self.type}Table'"
+        return _type_map.get(self.type, 'Any')
+
+    @property
+    def back_populates_field_name(self) -> Optional[str]:
+        """For relational fields, returns the counterpart field name on the related model."""
+        if not self.relation_name:
+            return None
+        related_model = self.get_relational_model()
+        if related_model is None:
+            return None
+        for field in related_model.all_fields:
+            if field.relation_name == self.relation_name and field.name != self.name:
+                return field.name
         return None
 
     def get_corresponding_enum(self) -> Optional['Enum']:

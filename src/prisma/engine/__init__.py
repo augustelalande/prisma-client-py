@@ -11,6 +11,14 @@ from ._abstract import (
 )
 
 try:
+    from ._sqlalchemy import (  # noqa: TID251
+        SyncSQLAlchemyEngine as SyncSQLAlchemyEngine,
+        AsyncSQLAlchemyEngine as AsyncSQLAlchemyEngine,
+    )
+except ImportError:
+    pass  # sqlalchemy optional dependency not installed
+
+try:
     from .query import *  # noqa: TID251
     from .abstract import *  # noqa: TID251
 except ModuleNotFoundError:

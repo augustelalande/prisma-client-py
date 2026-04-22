@@ -29,6 +29,25 @@ if not version:
 
 extras = {
     'node': requirements('node.txt'),
+    'sqlalchemy': [
+        'sqlalchemy>=2.0.0',
+        'sqlmodel>=0.0.14',
+    ],
+    'sqlalchemy-sqlite': [
+        'sqlalchemy>=2.0.0',
+        'sqlmodel>=0.0.14',
+        'aiosqlite>=0.19.0',
+    ],
+    'sqlalchemy-postgres': [
+        'sqlalchemy>=2.0.0',
+        'sqlmodel>=0.0.14',
+        'asyncpg>=0.28.0',
+    ],
+    'sqlalchemy-mysql': [
+        'sqlalchemy>=2.0.0',
+        'sqlmodel>=0.0.14',
+        'aiomysql>=0.2.0',
+    ],
 }
 
 setup(

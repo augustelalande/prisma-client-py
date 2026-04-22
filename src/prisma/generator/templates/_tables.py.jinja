@@ -1,0 +1,70 @@
+{% include '_header.py.jinja' %}
+# -- template _tables.py.jinja --
+# SQLModel table definitions used by the SQLAlchemy engine.
+# One Table class per schema model; these map directly to database tables.
+
+from __future__ import annotations
+
+import datetime
+import decimal
+from typing import Any, List, Optional
+
+from sqlmodel import SQLModel, Field, Relationship
+
+{% for model in dmmf.datamodel.models %}
+{% set fk_map = model.fk_map %}
+class {{ model.name }}Table(SQLModel, table=True):
+    __tablename__ = '{{ model.db_name or model.name }}'  # type: ignore[assignment]
+
+    {% for field in model.scalar_fields %}
+    {% set fk_target = fk_map.get(field.name) %}
+    {% if field.is_id %}
+        {% if field.type == 'Int' or field.type == 'BigInt' %}
+            {# Integer PKs are auto-incremented by SQLAlchemy #}
+            {% if not field.is_required or field.has_default_value %}
+    {{ field.name }}: Optional[int] = Field(default=None, primary_key=True)
+            {% else %}
+    {{ field.name }}: Optional[int] = Field(default=None, primary_key=True)
+            {% endif %}
+        {% else %}
+            {# String PKs — cuid/uuid generated in Python #}
+    {{ field.name }}: Optional[str] = Field(default=None, primary_key=True)
+        {% endif %}
+    {% elif field.is_updated_at %}
+    {{ field.name }}: Optional[datetime.datetime] = Field(
+        default=None,
+        sa_column_kwargs={'onupdate': datetime.datetime.utcnow},
+    )
+    {% elif fk_target %}
+        {% if field.is_required %}
+    {{ field.name }}: {{ field.sqlalchemy_type }} = Field(foreign_key='{{ fk_target }}')
+        {% else %}
+    {{ field.name }}: Optional[{{ field.sqlalchemy_type }}] = Field(default=None, foreign_key='{{ fk_target }}')
+        {% endif %}
+    {% elif field.is_unique %}
+        {% if field.is_required %}
+    {{ field.name }}: {{ field.sqlalchemy_type }} = Field(unique=True)
+        {% else %}
+    {{ field.name }}: Optional[{{ field.sqlalchemy_type }}] = Field(default=None, unique=True)
+        {% endif %}
+    {% elif field.is_required and not field.has_default_value %}
+    {{ field.name }}: {{ field.sqlalchemy_type }}
+    {% else %}
+        {% if field.is_required %}
+    {{ field.name }}: {{ field.sqlalchemy_type }} = Field(default=None)
+        {% else %}
+    {{ field.name }}: Optional[{{ field.sqlalchemy_type }}] = Field(default=None)
+        {% endif %}
+    {% endif %}
+    {% endfor %}
+
+    {% for field in model.relational_fields %}
+    {% set bp = field.back_populates_field_name %}
+    {% if field.is_list %}
+    {{ field.name }}: List['{{ field.type }}Table'] = Relationship(back_populates='{{ bp }}')
+    {% else %}
+    {{ field.name }}: Optional['{{ field.type }}Table'] = Relationship(back_populates='{{ bp }}')
+    {% endif %}
+    {% endfor %}
+
+{% endfor %}

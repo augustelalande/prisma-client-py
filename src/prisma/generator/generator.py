@@ -22,7 +22,7 @@ from .utils import (
 )
 from ..utils import DEBUG, DEBUG_GENERATOR
 from .errors import PartialTypeGeneratorError
-from .models import PythonData, DefaultData
+from .models import PythonData, DefaultData, EngineType
 from .._types import BaseModelT, InheritsGeneric, get_args
 from .filters import quote
 from .jsonrpc import Manifest
@@ -216,12 +216,16 @@ class Generator(GenericGenerator[PythonData]):
 
     @override
     def get_manifest(self) -> Manifest:
+        # If the user configured sqlalchemy engine type, suppress binary download
+        engine_type_env = os.environ.get('PRISMA_PY_CONFIG_ENGINE_TYPE', '')
+        if engine_type_env == EngineType.sqlalchemy:
+            requires_engines: list[str] = []
+        else:
+            requires_engines = ['queryEngine']
         return Manifest(
             name=f'Prisma Client Python (v{__version__})',
             default_output=BASE_PACKAGE_DIR,
-            requires_engines=[
-                'queryEngine',
-            ],
+            requires_engines=requires_engines,
         )
 
     @override
@@ -248,6 +252,10 @@ class Generator(GenericGenerator[PythonData]):
                     continue
 
                 render_template(rootdir, name, params)
+
+            if config.engine_type == EngineType.sqlalchemy:
+                log.debug('Generating SQLAlchemy table definitions')
+                render_template(rootdir, '_tables.py.jinja', params)
 
             if config.partial_type_generator:
                 log.debug('Generating partial types')

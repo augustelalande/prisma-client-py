@@ -400,12 +400,25 @@ class SyncBasePrisma(BasePrisma[SyncAbstractEngine]):
                 http_config=self._http_config,
             )
 
+        if self._engine_type == EngineType.sqlalchemy:
+            from .engine._sqlalchemy import SyncSQLAlchemyEngine
+
+            return SyncSQLAlchemyEngine(
+                datasource=self._default_datasource,
+                active_provider=self._active_provider,
+            )
+
         raise NotImplementedError(f'Unsupported engine type: {self._engine_type}')
 
     @property
     def _engine_class(self) -> type[SyncAbstractEngine]:
         if self._engine_type == EngineType.binary:
             return SyncQueryEngine
+
+        if self._engine_type == EngineType.sqlalchemy:
+            from .engine._sqlalchemy import SyncSQLAlchemyEngine
+
+            return SyncSQLAlchemyEngine
 
         raise RuntimeError(f'Unhandled engine type: {self._engine_type}')
 
@@ -417,6 +430,18 @@ class SyncBasePrisma(BasePrisma[SyncAbstractEngine]):
         model: type[BaseModel] | None = None,
         root_selection: list[str] | None = None,
     ) -> Any:
+        if self._engine_type == EngineType.sqlalchemy:
+            from ._query_repr import QueryRequest
+
+            request = QueryRequest(
+                method=method,
+                model_name=model.__prisma_model__ if model is not None else None,  # type: ignore[attr-defined]
+                arguments=arguments,
+                root_selection=root_selection,
+                tx_id=self._tx_id,
+            )
+            return self._engine.query(request, tx_id=self._tx_id)
+
         builder = self._make_query_builder(
             method=method, model=model, arguments=arguments, root_selection=root_selection
         )
@@ -519,12 +544,25 @@ class AsyncBasePrisma(BasePrisma[AsyncAbstractEngine]):
                 http_config=self._http_config,
             )
 
+        if self._engine_type == EngineType.sqlalchemy:
+            from .engine._sqlalchemy import AsyncSQLAlchemyEngine
+
+            return AsyncSQLAlchemyEngine(
+                datasource=self._default_datasource,
+                active_provider=self._active_provider,
+            )
+
         raise NotImplementedError(f'Unsupported engine type: {self._engine_type}')
 
     @property
     def _engine_class(self) -> type[AsyncAbstractEngine]:
         if self._engine_type == EngineType.binary:
             return AsyncQueryEngine
+
+        if self._engine_type == EngineType.sqlalchemy:
+            from .engine._sqlalchemy import AsyncSQLAlchemyEngine
+
+            return AsyncSQLAlchemyEngine
 
         raise RuntimeError(f'Unhandled engine type: {self._engine_type}')
 
@@ -537,6 +575,18 @@ class AsyncBasePrisma(BasePrisma[AsyncAbstractEngine]):
         model: type[BaseModel] | None = None,
         root_selection: list[str] | None = None,
     ) -> Any:
+        if self._engine_type == EngineType.sqlalchemy:
+            from ._query_repr import QueryRequest
+
+            request = QueryRequest(
+                method=method,
+                model_name=model.__prisma_model__ if model is not None else None,  # type: ignore[attr-defined]
+                arguments=arguments,
+                root_selection=root_selection,
+                tx_id=self._tx_id,
+            )
+            return await self._engine.query(request, tx_id=self._tx_id)
+
         builder = self._make_query_builder(
             method=method, model=model, arguments=arguments, root_selection=root_selection
         )
